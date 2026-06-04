@@ -13,7 +13,8 @@ import random
 import os, sys
 import torch
 from random import randint
-from utils.loss_utils import l1_loss, ssim, l2_loss, lpips_loss
+from utils.loss_utils import l1_loss, motion_weighted_l1_loss, ssim, l2_loss, lpips_loss
+from utils.motion_utils import MotionWeightCache
 from gaussian_renderer import render, network_gui
 import sys
 from scene import Scene, GaussianModel
@@ -73,6 +74,17 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
     video_cams = scene.getVideoCameras()
     test_cams = scene.getTestCameras()
     train_cams = scene.getTrainCameras()
+    motion_weight_cache = None
+    if stage == "fine" and opt.motion_loss_weight > 0:
+        if scene.dataset_type == "PanopticSports":
+            raise NotImplementedError("Motion-weighted loss does not support PanopticSports cameras.")
+        print("Building temporal motion-weight cache...")
+        motion_weight_cache = MotionWeightCache(
+            train_cams,
+            opt.motion_loss_quantile,
+            opt.motion_loss_min_response,
+            opt.motion_loss_group_by_stream,
+        )
 
 
     if not viewpoint_stack and not opt.dataloader:
@@ -177,6 +189,7 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
         radii_list = []
         visibility_filter_list = []
         viewspace_point_tensor_list = []
+        motion_weights = []
         for viewpoint_cam in viewpoint_cams:
             render_pkg = render(viewpoint_cam, gaussians, pipe, background, stage=stage,cam_type=scene.dataset_type)
             image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
@@ -187,6 +200,8 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
                 gt_image  = viewpoint_cam['image'].cuda()
             
             gt_images.append(gt_image.unsqueeze(0))
+            if motion_weight_cache is not None:
+                motion_weights.append(motion_weight_cache.get(viewpoint_cam, image.device).unsqueeze(0))
             radii_list.append(radii.unsqueeze(0))
             visibility_filter_list.append(visibility_filter.unsqueeze(0))
             viewspace_point_tensor_list.append(viewspace_point_tensor)
@@ -198,7 +213,16 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
         gt_image_tensor = torch.cat(gt_images,0)
         # Loss
         # breakpoint()
-        Ll1 = l1_loss(image_tensor, gt_image_tensor[:,:3,:,:])
+        if motion_weight_cache is not None:
+            motion_weight_tensor = torch.cat(motion_weights, 0)
+            Ll1 = motion_weighted_l1_loss(
+                image_tensor,
+                gt_image_tensor[:,:3,:,:],
+                motion_weight_tensor,
+                opt.motion_loss_weight,
+            )
+        else:
+            Ll1 = l1_loss(image_tensor, gt_image_tensor[:,:3,:,:])
 
         psnr_ = psnr(image_tensor, gt_image_tensor).mean().double()
         # norm

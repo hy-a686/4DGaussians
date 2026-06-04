@@ -20,6 +20,11 @@ def lpips_loss(img1, img2, lpips_model):
 def l1_loss(network_output, gt):
     return torch.abs((network_output - gt)).mean()
 
+def motion_weighted_l1_loss(network_output, gt, motion_weights, weight_strength):
+    pixel_weights = 1.0 + weight_strength * motion_weights
+    weighted_error = pixel_weights * torch.abs(network_output - gt)
+    return weighted_error.sum() / (pixel_weights.sum() * network_output.shape[-3])
+
 def l2_loss(network_output, gt):
     return ((network_output - gt) ** 2).mean()
 

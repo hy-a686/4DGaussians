@@ -9,3 +9,11 @@ screenshots
 data/
 data
 submodules/
+
+# Local datasets, downloads, and large generated artifacts
+data.zip
+*.zip
+downloads/
+output.png
+*.mp4
+viewers/
