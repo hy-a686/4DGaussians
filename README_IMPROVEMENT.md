@@ -86,7 +86,6 @@ data/hook
 data/hypernerf/virg/broom2
 ```
 
-Large datasets and rendered outputs are not intended to be committed to GitHub. They should be submitted in the experiment data ZIP required by the assignment.
 
 ## Baseline Reproduction Commands
 
