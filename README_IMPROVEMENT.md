@@ -92,8 +92,6 @@ Dataset sources used in this project:
 - Real Broom2 scene: HyperNeRF release v0.1 from https://github.com/google/hypernerf/releases/tag/v0.1. Download the `vrig_broom` scene package and place `broom2` under `data/hypernerf/virg/broom2`.
 - Pre-generated HyperNeRF point clouds: https://drive.google.com/file/d/1fUHiSgimVjVQZ2OOzTFtz02E9EqCoWr5/view. For Broom2, copy `hypernerf/virg/broom2/points3D_downsample2.ply` into `data/hypernerf/virg/broom2/points3D_downsample2.ply`.
 
-Large datasets and rendered outputs are not intended to be committed to GitHub. They should be submitted in the experiment data ZIP required by the assignment.
-
 ## Baseline Reproduction Commands
 
 ### Synthetic scene: d-NeRF Hook
