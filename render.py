@@ -79,6 +79,12 @@ def render_sets(dataset : ModelParams, hyperparam, iteration : int, pipeline : P
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree, hyperparam)
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
+        if pipeline.static_dynamic_routing:
+            if not pipeline.routing_table_path:
+                raise ValueError("--routing_table_path is required with --static_dynamic_routing")
+            gaussians.load_deformation_table(pipeline.routing_table_path)
+            dynamic_ratio = gaussians._deformation_table.float().mean().item()
+            print("dynamic Gaussian ratio:", dynamic_ratio)
         cam_type=scene.dataset_type
         bg_color = [1,1,1] if dataset.white_background else [0, 0, 0]
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")

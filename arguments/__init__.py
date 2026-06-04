@@ -70,6 +70,8 @@ class PipelineParams(ParamGroup):
         self.convert_SHs_python = False
         self.compute_cov3D_python = False
         self.debug = False
+        self.static_dynamic_routing = False
+        self.routing_table_path = ""
         super().__init__(parser, "Pipeline Parameters")
 class ModelHiddenParams(ParamGroup):
     def __init__(self, parser):
@@ -130,6 +132,10 @@ class OptimizationParams(ParamGroup):
         self.percent_dense = 0.01
         self.lambda_dssim = 0
         self.lambda_lpips = 0
+        self.motion_loss_weight = 0.0
+        self.motion_loss_quantile = 0.95
+        self.motion_loss_min_response = 0.0
+        self.motion_loss_group_by_stream = False
         self.weight_constraint_init= 1
         self.weight_constraint_after = 0.2
         self.weight_decay_iteration = 5000

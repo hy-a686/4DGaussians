@@ -80,13 +80,35 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
     if "coarse" in stage:
         means3D_final, scales_final, rotations_final, opacity_final, shs_final = means3D, scales, rotations, opacity, shs
     elif "fine" in stage:
-        # time0 = get_time()
-        # means3D_deform, scales_deform, rotations_deform, opacity_deform = pc._deformation(means3D[deformation_point], scales[deformation_point], 
-        #                                                                  rotations[deformation_point], opacity[deformation_point],
-        #                                                                  time[deformation_point])
-        means3D_final, scales_final, rotations_final, opacity_final, shs_final = pc._deformation(means3D, scales, 
-                                                                 rotations, opacity, shs,
-                                                                 time)
+        use_routing = (
+            pipe.static_dynamic_routing
+            and deformation_point.numel() == means3D.shape[0]
+            and not deformation_point.all()
+        )
+        if use_routing:
+            means3D_final = means3D.clone()
+            scales_final = scales.clone()
+            rotations_final = rotations.clone()
+            opacity_final = opacity.clone()
+            shs_final = shs.clone()
+            if deformation_point.any():
+                deformed = pc._deformation(
+                    means3D[deformation_point],
+                    scales[deformation_point],
+                    rotations[deformation_point],
+                    opacity[deformation_point],
+                    shs[deformation_point],
+                    time[deformation_point],
+                )
+                means3D_final[deformation_point] = deformed[0]
+                scales_final[deformation_point] = deformed[1]
+                rotations_final[deformation_point] = deformed[2]
+                opacity_final[deformation_point] = deformed[3]
+                shs_final[deformation_point] = deformed[4]
+        else:
+            means3D_final, scales_final, rotations_final, opacity_final, shs_final = pc._deformation(
+                means3D, scales, rotations, opacity, shs, time
+            )
     else:
         raise NotImplementedError
 

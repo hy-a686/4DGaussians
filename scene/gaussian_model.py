@@ -247,6 +247,35 @@ class GaussianModel:
         torch.save(self._deformation.state_dict(),os.path.join(path, "deformation.pth"))
         torch.save(self._deformation_table,os.path.join(path, "deformation_table.pth"))
         torch.save(self._deformation_accum,os.path.join(path, "deformation_accum.pth"))
+    def load_deformation_table(self, path):
+        table = torch.load(path, map_location="cuda").bool()
+        if table.numel() != self.get_xyz.shape[0]:
+            raise ValueError("Routing table size does not match the loaded Gaussian model.")
+        self._deformation_table = table
+    @torch.no_grad()
+    def build_deformation_table(self, time_samples, threshold, scale_weight=0.1, rotation_weight=0.1):
+        score = torch.zeros((self.get_xyz.shape[0]), device=self.get_xyz.device)
+        for time_value in time_samples:
+            time = torch.full(
+                (self.get_xyz.shape[0], 1),
+                float(time_value),
+                device=self.get_xyz.device,
+                dtype=self.get_xyz.dtype,
+            )
+            means, scales, rotations, _, _ = self._deformation(
+                self._xyz,
+                self._scaling,
+                self._rotation,
+                self._opacity,
+                self.get_features,
+                time,
+            )
+            current_score = torch.norm(means - self._xyz, dim=-1)
+            current_score += scale_weight * torch.norm(scales - self._scaling, dim=-1)
+            current_score += rotation_weight * torch.norm(rotations - self._rotation, dim=-1)
+            score = torch.maximum(score, current_score)
+        self._deformation_table = score > threshold
+        return score
     def save_ply(self, path):
         mkdir_p(os.path.dirname(path))
 
